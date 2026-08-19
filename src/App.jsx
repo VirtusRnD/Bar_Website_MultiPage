@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { activeThemeConfig } from './theme/themeConfig.js';
+import { io } from 'socket.io-client';
+import { THEMES } from './theme/themeConfig.js';
 
 import Navbar from './components/Navbar.jsx';
 import HeroSection from './components/HeroSection.jsx';
@@ -10,6 +11,10 @@ import Menu from './components/Menu.jsx';
 import Events from './components/Events.jsx';
 import Reservation from './components/Reservation.jsx';
 import InfoAndMap from './components/InfoAndMap.jsx';
+
+const BACKEND_URL = 'https://theme-backend-vh34.onrender.com';
+const socket = io(BACKEND_URL);
+const CURRENT_SITE_ID = 'bar-multipage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -21,10 +26,33 @@ function ScrollToTop() {
 
 export default function App() {
   const [selectedEventForReserve, setSelectedEventForReserve] = useState(null);
-  
-  // Hatanın çözümü: activeTheme değişkenini burada tanımlıyoruz
-  const activeTheme = activeThemeConfig; 
+  const [currentThemeKey, setCurrentThemeKey] = useState('dillerRoom');
   const location = useLocation();
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/themes/${CURRENT_SITE_ID}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.activeTheme && THEMES[data.activeTheme]) {
+          setCurrentThemeKey(data.activeTheme);
+        }
+      })
+      .catch((err) => console.error(err));
+
+    const handleThemeChange = (data) => {
+      if (data.siteId === CURRENT_SITE_ID && THEMES[data.activeTheme]) {
+        setCurrentThemeKey(data.activeTheme);
+      }
+    };
+
+    socket.on('theme_changed', handleThemeChange);
+
+    return () => {
+      socket.off('theme_changed', handleThemeChange);
+    };
+  }, []);
+
+  const activeTheme = THEMES[currentThemeKey] || THEMES.dillerRoom;
 
   const handleSelectEvent = (eventTitle, eventDate) => {
     setSelectedEventForReserve({ title: eventTitle, date: eventDate });
@@ -38,7 +66,6 @@ export default function App() {
     <div className={`min-h-screen ${activeTheme.bgClass} relative selection:bg-white selection:text-black overflow-x-hidden ${activeTheme.fontStyle} transition-colors duration-700`}>
       <ScrollToTop />
       
-      {/* BELİRGENLEŞTİRİLMİŞ ARKAPLAN VE ATMOSFER */}
       <div className="fixed inset-0 w-full h-full pointer-events-none z-0">
         <div 
           className="w-full h-full bg-cover bg-center filter brightness-[0.45] saturate-85 transition-all duration-1000 ease-in-out"
@@ -50,10 +77,8 @@ export default function App() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/70" />
       </div>
 
-      {/* HEADER / NAVBAR */}
       <Navbar activeTheme={activeTheme} />
 
-      {/* SAYFA GEÇİŞ ANİMASYONU & ROTALAR */}
       <main className="relative z-10 flex flex-col pt-20">
         <AnimatePresence mode="wait">
           <motion.div
@@ -72,7 +97,7 @@ export default function App() {
                 path="/reservation" 
                 element={
                   <Reservation 
-                    activeTheme={activeTheme}
+                    activeTheme={activeTheme} 
                     selectedEvent={selectedEventForReserve} 
                     onClearEvent={handleClearEvent} 
                   />
@@ -84,7 +109,6 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* FOOTER */}
       <footer className="relative z-10 py-10 text-center text-xs opacity-60 border-t border-white/10 tracking-wider bg-black/80 backdrop-blur-md">
         © 2026 {activeTheme.name}. Experience curated for nightlife connoisseurs.
       </footer>
