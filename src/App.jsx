@@ -26,7 +26,12 @@ function ScrollToTop() {
 
 export default function App() {
   const [selectedEventForReserve, setSelectedEventForReserve] = useState(null);
-  const [currentThemeKey, setCurrentThemeKey] = useState('dillerRoom');
+  
+  const [currentThemeKey, setCurrentThemeKey] = useState(() => {
+    const savedTheme = localStorage.getItem(`${CURRENT_SITE_ID}-theme`);
+    return savedTheme || 'dillerRoom';
+  });
+
   const location = useLocation();
 
   useEffect(() => {
@@ -51,6 +56,21 @@ export default function App() {
       socket.off('theme_changed', handleThemeChange);
     };
   }, []);
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.type === "THEME_CHANGE" && event.data.themeKey && event.data.siteId === CURRENT_SITE_ID) {
+        setCurrentThemeKey(event.data.themeKey);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(`${CURRENT_SITE_ID}-theme`, currentThemeKey);
+  }, [currentThemeKey]);
 
   const activeTheme = THEMES[currentThemeKey] || THEMES.dillerRoom;
 
