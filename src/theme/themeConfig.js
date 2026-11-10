@@ -112,6 +112,7 @@ export const BAR_DATA = {
   hours: 'Salı - Pazar: 18:00 - 04:00 (Özel Üye Girişi: 17:00)',
   location: 'Alsancak Mahallesi, Kordon Çıkmazı No: 12 VIP Suites, İzmir',
   phone: '+90 (232) 444 00 26',
+  email: 'info@example.com', // yayına almadan önce değiştirin: rezervasyon formu bu adrese düşer
   menu: [
     {
       id: 1,

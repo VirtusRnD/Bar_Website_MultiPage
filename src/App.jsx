@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { io } from 'socket.io-client';
 import { THEMES } from './theme/themeConfig.js';
 
 import Navbar from './components/Navbar.jsx';
@@ -12,8 +11,8 @@ import Events from './components/Events.jsx';
 import Reservation from './components/Reservation.jsx';
 import InfoAndMap from './components/InfoAndMap.jsx';
 
-const BACKEND_URL = 'https://theme-backend-vh34.onrender.com';
-const socket = io(BACKEND_URL);
+// Optional live theme switcher: set VITE_THEME_BACKEND_URL to turn it on (see .env.example).
+const BACKEND_URL = import.meta.env.VITE_THEME_BACKEND_URL;
 const CURRENT_SITE_ID = 'bar-multipage';
 
 function ScrollToTop() {
@@ -35,7 +34,10 @@ export default function App() {
   const location = useLocation();
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/themes/${CURRENT_SITE_ID}`)
+    if (!BACKEND_URL) return;
+    let socket;
+    let unmounted = false;
+    fetch(`${BACKEND_URL}/api/themes/${CURRENT_SITE_ID}`, { signal: AbortSignal.timeout(5000) })
       .then((res) => res.json())
       .then((data) => {
         if (data.activeTheme && THEMES[data.activeTheme]) {
@@ -50,10 +52,15 @@ export default function App() {
       }
     };
 
-    socket.on('theme_changed', handleThemeChange);
+    import('socket.io-client').then(({ io }) => {
+      if (unmounted) return;
+      socket = io(BACKEND_URL);
+      socket.on('theme_changed', handleThemeChange);
+    });
 
     return () => {
-      socket.off('theme_changed', handleThemeChange);
+      unmounted = true;
+      socket?.disconnect();
     };
   }, []);
 
